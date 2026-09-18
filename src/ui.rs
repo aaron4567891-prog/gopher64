@@ -18,7 +18,7 @@ pub mod video;
 #[cfg(all(feature = "gui", not(target_os = "android")))]
 pub mod vru;
 
-pub const APP_ID: &str = "io.github.gopher64.gopher64";
+pub const APP_ID: &str = "io.github.gopher64.thortest";
 
 pub fn install_default_crypto_provider() {
     if rustls::crypto::CryptoProvider::get_default().is_none() {

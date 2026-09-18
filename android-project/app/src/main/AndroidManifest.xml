@@ -18,9 +18,11 @@
 
     <application
         android:icon="@mipmap/ic_launcher"
-        android:label="Gopher64"
+        android:label="Gopher64 Thor Test"
         android:appCategory="game"
         android:hardwareAccelerated="true">
+        <!-- Diagnostic experiment; not yet a verified Thor fix. -->
+        <meta-data android:name="SDL_ENV.PARALLEL_RDP_FORCE_SYNC_SHADER" android:value="1" />
         <activity android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:name=".SlintActivity" android:exported="true">
             <meta-data android:name="android.app.lib_name" android:value="gopher64" />

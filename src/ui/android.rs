@@ -209,8 +209,8 @@ fn start_configure_input_profile_on_jvm(
     let raw_activity_global = app.activity_as_ptr() as jni::sys::jobject;
     let activity = unsafe { env.as_cast_raw::<Global<AndroidActivity>>(&raw_activity_global)? };
 
-    let package_name = JString::from_str(env, "io.github.gopher64.gopher64")?;
-    let class_name = JString::from_str(env, "io.github.gopher64.gopher64.N64Activity")?;
+    let package_name = JString::from_str(env, "io.github.gopher64.thortest")?;
+    let class_name = JString::from_str(env, "io.github.gopher64.thortest.N64Activity")?;
 
     let args_key = JString::from_str(env, "args")?;
     let mut args = vec![
@@ -265,8 +265,8 @@ fn start_run_rom_on_jvm(
     let raw_activity_global = app.activity_as_ptr() as jni::sys::jobject;
     let activity = unsafe { env.as_cast_raw::<Global<AndroidActivity>>(&raw_activity_global)? };
 
-    let package_name = JString::from_str(env, "io.github.gopher64.gopher64")?;
-    let class_name = JString::from_str(env, "io.github.gopher64.gopher64.N64Activity")?;
+    let package_name = JString::from_str(env, "io.github.gopher64.thortest")?;
+    let class_name = JString::from_str(env, "io.github.gopher64.thortest.N64Activity")?;
 
     let file_path_key = JString::from_str(env, "file_path")?;
     let file_path = file_path.to_str().unwrap();
@@ -579,7 +579,7 @@ fn get_file_from_uri_on_jvm(
 }
 
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_io_github_gopher64_gopher64_SlintActivity_nativeOnActivityResult<
+pub extern "system" fn Java_io_github_gopher64_thortest_SlintActivity_nativeOnActivityResult<
     'caller,
 >(
     mut unowned_env: EnvUnowned<'caller>,

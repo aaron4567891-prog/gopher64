@@ -18,7 +18,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "io.github.gopher64.gopher64"
+    namespace = "io.github.gopher64.thortest"
     compileSdk {
         version = release(37) {
             minorApiLevel = 2
@@ -28,13 +28,13 @@ android {
     ndkVersion = "29.0.14206865"
 
     defaultConfig {
-        applicationId = "io.github.gopher64.gopher64"
+        applicationId = "io.github.gopher64.thortest"
         minSdk = 33
         targetSdk = 37
         versionCode = semverToVersionCode(cargoPackageVersion())
         versionName = cargoPackageVersion()
         ndk {
-            abiFilters.addAll(listOf("arm64-v8a", "x86_64"))
+            abiFilters.addAll(listOf("arm64-v8a"))
         }
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -53,6 +53,7 @@ android {
 
     buildTypes {
         release {
+            signingConfig = signingConfigs["debug"]
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs["release"]
             }
@@ -122,7 +123,6 @@ val ndkBuild = tasks.register<Exec>("ndkBuild") {
         "--link-libcxx-shared",
         "-P", "$minSdk",
         "-t", "arm64-v8a",
-        "-t", "x86_64",
         "-o", jniLibsFolder,
         "build", "--lib",
         "--profile", if (isRelease) "release" else "dev",
@@ -151,7 +151,6 @@ val sdlLibsX64 = tasks.register<Copy>("sdlLibsX64") {
 
 tasks.named("preBuild") {
     dependsOn(sdlLibsArm64)
-    dependsOn(sdlLibsX64)
 }
 
 tasks.named("sdlLibsArm64") {

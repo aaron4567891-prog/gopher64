@@ -1,4 +1,4 @@
-package io.github.gopher64.gopher64
+package io.github.gopher64.thortest
 
 import android.content.Intent
 import android.os.PowerManager

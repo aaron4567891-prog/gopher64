@@ -1,4 +1,4 @@
-package io.github.gopher64.gopher64
+package io.github.gopher64.thortest
 
 import android.app.NativeActivity
 import android.content.Intent
