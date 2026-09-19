@@ -110,6 +110,18 @@ fn rom_exists(path: &str) -> bool {
 }
 
 fn local_game_window(app: &AppWindow, config: &ui::config::Config) {
+    #[cfg(target_os = "android")]
+    {
+        let weak = app.as_weak();
+        app.on_rom_library_button_clicked(move || {
+            let weak = weak.clone();
+            tokio::spawn(async move {
+                if let Some(path) = ui::android::select_library_rom().await {
+                    run_with_path(weak, path);
+                }
+            });
+        });
+    }
     app.set_recent_roms(slint::ModelRc::from(std::rc::Rc::new(
         slint::VecModel::from(
             config

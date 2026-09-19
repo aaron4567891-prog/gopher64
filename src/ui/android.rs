@@ -10,6 +10,7 @@ use jni::{Env, EnvUnowned, JavaVM, bind_java_type};
 use std::os::fd::FromRawFd;
 
 const REQUEST_SELECT_ROM: jint = 1;
+const REQUEST_ROM_LIBRARY: jint = 4;
 const CONFIGURE_INPUT_PROFILE: jint = 2;
 const RUN_ROM: jint = 3;
 
@@ -450,6 +451,17 @@ fn open_uri_on_jvm(
 }
 
 pub async fn select_rom(rom_dir: slint::SharedString) -> Option<std::path::PathBuf> {
+    select_rom_impl(rom_dir, false).await
+}
+
+pub async fn select_library_rom() -> Option<std::path::PathBuf> {
+    select_rom_impl(slint::SharedString::new(), true).await
+}
+
+async fn select_rom_impl(
+    rom_dir: slint::SharedString,
+    library: bool,
+) -> Option<std::path::PathBuf> {
     let (tx, rx) = tokio::sync::oneshot::channel::<Option<std::path::PathBuf>>();
     SELECT_ROM_TX.lock().await.replace(tx);
 
@@ -457,7 +469,7 @@ pub async fn select_rom(rom_dir: slint::SharedString) -> Option<std::path::PathB
         && let Some(app) = app.as_ref()
     {
         if let Err(err) = get_vm(app)
-            .attach_current_thread(|env| select_rom_on_jvm(env, app, rom_dir.to_string()))
+            .attach_current_thread(|env| select_rom_on_jvm(env, app, rom_dir.to_string(), library))
         {
             eprintln!("JNI error while opening URI: {err:?}");
             return None;
@@ -482,10 +494,18 @@ fn select_rom_on_jvm(
     env: &mut Env<'_>,
     app: &slint::android::AndroidApp,
     rom_dir: String,
+    library: bool,
 ) -> jni::errors::Result<()> {
     let raw_activity_global = app.activity_as_ptr() as jni::sys::jobject;
     let activity = unsafe { env.as_cast_raw::<Global<AndroidActivity>>(&raw_activity_global)? };
 
+    if library {
+        let package = JString::from_str(env, "io.github.gopher64.gopher64")?;
+        let class = JString::from_str(env, "io.github.gopher64.gopher64.RomLibraryActivity")?;
+        let intent = AndroidIntent::new(env)?.set_class_name(env, &package, &class)?;
+        activity.start_activity_for_result(env, &intent, REQUEST_ROM_LIBRARY)?;
+        return Ok(());
+    }
     let action = AndroidIntent::ACTION_OPEN_DOCUMENT(env)?;
     let category = AndroidIntent::CATEGORY_OPENABLE(env)?;
     let mime_type = JString::from_str(env, "*/*")?;
@@ -591,7 +611,7 @@ pub extern "system" fn Java_io_github_gopher64_gopher64_SlintActivity_nativeOnAc
     let outcome = unowned_env.with_env(|env| -> Result<_, jni::errors::Error> {
         if result_code == AndroidActivity::RESULT_OK(env)? {
             match request_code {
-                REQUEST_SELECT_ROM => {
+                REQUEST_SELECT_ROM | REQUEST_ROM_LIBRARY => {
                     if let Some(tx) = SELECT_ROM_TX.blocking_lock().take()
                         && !intent_data.is_null()
                     {
@@ -613,12 +633,16 @@ pub extern "system" fn Java_io_github_gopher64_gopher64_SlintActivity_nativeOnAc
 
                             let content_resolver = activity.as_ref().get_content_resolver(env)?;
                             let take_flags = AndroidIntent::FLAG_GRANT_READ_URI_PERMISSION(env)?;
-                            content_resolver
-                                .take_persistable_uri_permission(env, &uri, take_flags)?;
+                            // Library documents inherit the persisted tree grant.
+                            if request_code == REQUEST_SELECT_ROM {
+                                content_resolver
+                                    .take_persistable_uri_permission(env, &uri, take_flags)?;
+                            }
 
                             let path = uri.to_string(env)?;
 
-                            let _ = tx.send(Some(std::path::PathBuf::from(path.to_string())));
+                            let _ =
+                                tx.send(Some(std::path::PathBuf::from(path.try_to_string(env)?)));
                         } else {
                             eprintln!("Android app not initialized");
                             return Ok(());
@@ -663,6 +687,12 @@ pub extern "system" fn Java_io_github_gopher64_gopher64_SlintActivity_nativeOnAc
                 }
                 _ => {}
             }
+        }
+        if result_code != AndroidActivity::RESULT_OK(env)?
+            && matches!(request_code, REQUEST_SELECT_ROM | REQUEST_ROM_LIBRARY)
+            && let Some(tx) = SELECT_ROM_TX.blocking_lock().take()
+        {
+            let _ = tx.send(None);
         }
         Ok(())
     });

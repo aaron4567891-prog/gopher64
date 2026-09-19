@@ -39,6 +39,7 @@ export component AppWindow inherits Window {
     callback github_sponsors_button_clicked;
     callback source_code_button_clicked;
     callback open_rom_button_clicked;
+    callback rom_library_button_clicked;
     callback saves_folder_button_clicked;
     callback input_profile_button_clicked;
     callback input_profile_creation_button_clicked;
@@ -220,6 +221,9 @@ export component AppWindow inherits Window {
             height: 100%;
             open_rom_button_clicked => {
                 open_rom_button_clicked();
+            }
+            rom_library_button_clicked => {
+                rom_library_button_clicked();
             }
             saves_folder_button_clicked => {
                 saves_folder_button_clicked();

@@ -18,6 +18,7 @@ export global State {
 
 export component LocalGame inherits Page {
     callback open_rom_button_clicked;
+    callback rom_library_button_clicked;
     callback saves_folder_button_clicked;
     callback newversion_button_clicked;
     callback recent_rom_button_clicked(string);
@@ -27,6 +28,11 @@ export component LocalGame inherits Page {
         alignment: start;
         HorizontalBox {
             alignment: center;
+            if State.is_android: Button {
+                text: @tr("ROM Library");
+                enabled: !State.game_running;
+                clicked => { rom_library_button_clicked(); }
+            }
             Button {
                 text: @tr("Open ROM");
                 enabled: !State.game_running;
