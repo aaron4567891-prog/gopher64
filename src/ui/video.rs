@@ -31,6 +31,7 @@ fn build_gfx_info(device: &mut device::Device, netplay: bool) -> GFX_INFO {
         upscale: device.ui.config.video.upscale,
         ssaa: device.ui.config.video.ssaa,
         crt: device.ui.config.video.crt,
+        renderer_compatibility: device.ui.config.video.renderer_compatibility,
     }
 }
 

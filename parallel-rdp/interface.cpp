@@ -113,6 +113,10 @@ static RDP_DEVICE rdp_device;
 static bool crop_letterbox;
 static CALL_BACK callback;
 static GFX_INFO gfx_info;
+
+extern "C" bool gopher64_renderer_compatibility() {
+  return gfx_info.renderer_compatibility;
+}
 static const uint32_t *fragment_spirv;
 static size_t fragment_size;
 

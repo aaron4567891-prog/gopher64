@@ -1,4 +1,16 @@
+#[path = "build_support/renderer_mode.rs"]
+mod renderer_mode;
+
 fn main() {
+    println!("cargo::rerun-if-changed=build_support");
+    let renderer_source = std::fs::read_to_string(
+        "parallel-rdp/parallel-rdp-standalone/parallel-rdp/rdp_renderer.cpp",
+    )
+    .expect("Initialize renderer submodules");
+    let renderer_overlay =
+        std::path::PathBuf::from(std::env::var_os("OUT_DIR").unwrap()).join("gopher_renderer.cpp");
+    std::fs::write(&renderer_overlay, renderer_mode::patch(&renderer_source))
+        .expect("Write renderer mode overlay");
     // Compile a patched copy so the driver workaround lives in this repository,
     // without requiring an unpublished commit in the renderer submodule.
     let device_source = "parallel-rdp/parallel-rdp-standalone/vulkan/device.cpp";
@@ -42,7 +54,7 @@ fn main() {
         .file("parallel-rdp/parallel-rdp-standalone/parallel-rdp/command_ring.cpp")
         .file("parallel-rdp/parallel-rdp-standalone/parallel-rdp/rdp_device.cpp")
         .file("parallel-rdp/parallel-rdp-standalone/parallel-rdp/rdp_dump_write.cpp")
-        .file("parallel-rdp/parallel-rdp-standalone/parallel-rdp/rdp_renderer.cpp")
+        .file(&renderer_overlay)
         .file("parallel-rdp/parallel-rdp-standalone/parallel-rdp/video_interface.cpp")
         .file("parallel-rdp/parallel-rdp-standalone/vulkan/buffer.cpp")
         .file("parallel-rdp/parallel-rdp-standalone/vulkan/buffer_pool.cpp")

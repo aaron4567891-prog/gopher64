@@ -17,6 +17,7 @@ export global SettingsData {
     in-out property <bool> widescreen;
     in-out property <bool> vsync;
     in-out property <bool> apply_crt_shader;
+    in-out property <int> renderer_mode;
     in-out property <bool> overclock_n64_cpu;
     in-out property <bool> disable_expansion_pak;
     in-out property <int> resolution;
@@ -52,6 +53,25 @@ export component Settings inherits Page {
                                 SettingsData.resolution = self.current-index;
                             }
                         }
+                    }
+
+                    HorizontalBox {
+                        alignment: start;
+                        Text {
+                            text: @tr("Renderer mode:");
+                            vertical-alignment: center;
+                        }
+                        ComboBox {
+                            model: [@tr("Standard"), @tr("Compatibility")];
+                            current-index: SettingsData.renderer_mode;
+                            selected => {
+                                SettingsData.renderer_mode = self.current-index;
+                            }
+                        }
+                    }
+                    Text {
+                        text: @tr("Try Compatibility if games freeze or show a black screen. Applies next game launch.");
+                        wrap: word-wrap;
                     }
 
                     Switch {

@@ -181,6 +181,7 @@ fn settings_window(app: &AppWindow, config: &ui::config::Config) {
     app.set_widescreen(config.video.widescreen);
     app.set_vsync(config.video.vsync);
     app.set_apply_crt_shader(config.video.crt);
+    app.set_renderer_mode(i32::from(config.video.renderer_compatibility));
     app.set_theme(config.ui.theme);
     app.set_overclock_n64_cpu(config.emulation.overclock);
     app.set_disable_expansion_pak(config.emulation.disable_expansion_pak);
@@ -454,6 +455,7 @@ pub fn save_settings(app: &AppWindow) {
     config.video.widescreen = app.get_widescreen();
     config.video.vsync = app.get_vsync();
     config.video.crt = app.get_apply_crt_shader();
+    config.video.renderer_compatibility = app.get_renderer_mode() == 1;
     config.ui.theme = app.get_theme();
     config.emulation.overclock = app.get_overclock_n64_cpu();
     config.emulation.disable_expansion_pak = app.get_disable_expansion_pak();

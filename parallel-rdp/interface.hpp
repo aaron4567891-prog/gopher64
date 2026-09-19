@@ -23,6 +23,7 @@ typedef struct {
   uint32_t upscale;
   bool ssaa;
   bool crt;
+  bool renderer_compatibility;
 } GFX_INFO;
 
 typedef struct {
