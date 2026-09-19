@@ -5,6 +5,8 @@ pub mod audio;
 pub mod cheats;
 pub mod config;
 #[cfg(feature = "gui")]
+pub mod controller_mapping;
+#[cfg(feature = "gui")]
 pub mod gui;
 pub mod input;
 pub mod input_profile;

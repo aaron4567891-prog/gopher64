@@ -294,6 +294,7 @@ fn controller_window(app: &AppWindow, config: &ui::config::Config) {
     )));
 
     update_input_profiles(&app.as_weak(), config);
+    ui::controller_mapping::setup(app, config);
 
     app.set_controller_changed(slint::ModelRc::from(std::rc::Rc::new(
         slint::VecModel::from(vec![false, false, false, false]),

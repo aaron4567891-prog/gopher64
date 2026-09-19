@@ -8,11 +8,20 @@ import {
     HorizontalBox,
     VerticalBox,
     GroupBox,
+    Slider,
 } from "std-widgets.slint";
 import { Page } from "page.slint";
 import { State } from "localgame_page.slint";
 
+export struct ControlMapping { label: string, primary: int, alternate: int }
+
 export global ControllerData {
+    in-out property <int> mapping_port;
+    in-out property <int> mapping_deadzone;
+    in-out property <bool> mapping_legacy;
+    in-out property <string> mapping_status;
+    in-out property <[string]> mapping_choices;
+    in-out property <[ControlMapping]> mapping_rows;
     in-out property <[bool]> controller_enabled;
     in-out property <[bool]> transferpak;
     in-out property <[string]> gb_rom_paths;
@@ -110,22 +119,6 @@ component ControllerSettingsGrid inherits HorizontalLayout {
         }
     }
 
-    ControllerSettingsColumn {
-        title: @tr("ControllerSettingsGrid" => "Profile");
-        content-min-width: 150px;
-
-        for player[index] in [0, 1, 2, 3]: ControllerSettingsCell {
-            ComboBox {
-                horizontal-stretch: 0;
-                min-width: self.preferred-width > 150px ? self.preferred-width : 150px;
-                model: ControllerData.input_profiles;
-                current-index: ControllerData.selected_profile_binding[index];
-                selected => {
-                    ControllerData.selected_profile_binding[index] = self.current-index;
-                }
-            }
-        }
-    }
 }
 
 component ControllerAssignmentGrid inherits VerticalLayout {
@@ -158,6 +151,10 @@ component ControllerAssignmentGrid inherits VerticalLayout {
 }
 
 export component ControllerConfig inherits Page {
+    callback mapping_port_changed(int);
+    callback mapping_changed(int, int, int);
+    callback mapping_deadzone_changed(int);
+    callback auto_map_controller;
     callback input_profile_button_clicked;
     callback transferpak_toggled(int, bool);
     callback controller_window_created;
@@ -170,18 +167,6 @@ export component ControllerConfig inherits Page {
     VerticalBox {
         spacing: 8px;
         alignment: start;
-
-        HorizontalBox {
-            alignment: start;
-
-            Button {
-                text: @tr("Configure Input Profile");
-                enabled: !State.game_running;
-                clicked => {
-                    input_profile_button_clicked();
-                }
-            }
-        }
 
         GroupBox {
             title: @tr("Controller Settings");
@@ -197,6 +182,63 @@ export component ControllerConfig inherits Page {
             title: @tr("Controller Assignment");
 
             ControllerAssignmentGrid { }
+        }
+        GroupBox {
+            title: @tr("Button Mapping");
+            VerticalBox {
+                HorizontalBox {
+                    ComboBox {
+                        model: [@tr("Player 1"), @tr("Player 2"), @tr("Player 3"), @tr("Player 4")];
+                        current-index: ControllerData.mapping_port;
+                        selected => {
+                            ControllerData.mapping_port = self.current-index;
+                            root.mapping_port_changed(self.current-index);
+                        }
+                    }
+                    Button {
+                        text: @tr("Auto-map Controller");
+                        enabled: !State.game_running;
+                        clicked => { root.auto_map_controller(); }
+                    }
+                }
+                Text {
+                    text: @tr("Choose the controller input for each N64 control. Auto-map replaces this player's bindings with the standard gamepad layout.");
+                    wrap: word-wrap;
+                }
+                if ControllerData.mapping_legacy: Text {
+                    text: @tr("Legacy raw joystick mapping is preserved. Use Auto-map to switch to standard gamepad inputs before editing.");
+                    wrap: word-wrap;
+                }
+                Text { text: ControllerData.mapping_status; wrap: word-wrap; }
+                HorizontalBox {
+                    Text { text: @tr("Deadzone"); vertical-alignment: center; }
+                    Slider {
+                        maximum: 99;
+                        value: ControllerData.mapping_deadzone;
+                        enabled: !State.game_running;
+                        changed(value) => { root.mapping_deadzone_changed(round(value)); }
+                    }
+                    Text { text: ControllerData.mapping_deadzone + "%"; }
+                }
+                for binding[index] in ControllerData.mapping_rows: VerticalBox {
+                    Text { text: binding.label; }
+                    ComboBox {
+                        model: ControllerData.mapping_choices;
+                        current-index: binding.primary;
+                        enabled: !State.game_running && !ControllerData.mapping_legacy;
+                        selected => { root.mapping_changed(index, 1, self.current-index); }
+                    }
+                    HorizontalBox {
+                        Text { text: @tr("Alternate"); vertical-alignment: center; }
+                        ComboBox {
+                            model: ControllerData.mapping_choices;
+                            current-index: binding.alternate;
+                            enabled: !State.game_running && !ControllerData.mapping_legacy;
+                            selected => { root.mapping_changed(index, 0, self.current-index); }
+                        }
+                    }
+                }
+            }
         }
     }
 }

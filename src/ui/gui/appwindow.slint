@@ -21,6 +21,7 @@ import { SettingsData } from "settings_page.slint";
 import { RAData } from "retroachievements_page.slint";
 import { AboutData } from "about_page.slint";
 import { ControllerData } from "controller_page.slint";
+export { ControlMapping } from "controller_page.slint";
 import { State } from "localgame_page.slint";
 import { CheatsData } from "cheat_page.slint";
 import { InputProfileDialog, InputProfileData } from "input_profile.slint";
@@ -31,6 +32,16 @@ import { NetplayJoin } from "netplay_join.slint";
 import { NetplayWait, NetplayWaitData } from "netplay_wait.slint";
 
 export component AppWindow inherits Window {
+    callback mapping_port_changed(int);
+    callback mapping_changed(int, int, int);
+    callback mapping_deadzone_changed(int);
+    callback auto_map_controller;
+    in-out property mapping_port <=> ControllerData.mapping_port;
+    in-out property mapping_deadzone <=> ControllerData.mapping_deadzone;
+    in-out property mapping_legacy <=> ControllerData.mapping_legacy;
+    in-out property mapping_status <=> ControllerData.mapping_status;
+    in-out property mapping_choices <=> ControllerData.mapping_choices;
+    in-out property mapping_rows <=> ControllerData.mapping_rows;
     callback wiki_button_clicked;
     callback discord_button_clicked;
     callback newversion_button_clicked;
@@ -236,6 +247,10 @@ export component AppWindow inherits Window {
             }
         }
         if(side-bar.current-item == 1 && !show_input_profile): ControllerConfig {
+            mapping_port_changed(port) => { root.mapping_port_changed(port); }
+            mapping_changed(row, slot, selection) => { root.mapping_changed(row, slot, selection); }
+            mapping_deadzone_changed(value) => { root.mapping_deadzone_changed(value); }
+            auto_map_controller => { root.auto_map_controller(); }
             width: 100%;
             height: 100%;
             input_profile_button_clicked => {
