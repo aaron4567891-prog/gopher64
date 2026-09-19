@@ -1,4 +1,19 @@
 fn main() {
+    // Compile a patched copy so the driver workaround lives in this repository,
+    // without requiring an unpublished commit in the renderer submodule.
+    let device_source = "parallel-rdp/parallel-rdp-standalone/vulkan/device.cpp";
+    let source = std::fs::read_to_string(device_source).expect("Initialize renderer submodules");
+    let anchor = "if (ext.driver_id == VK_DRIVER_ID_AMD_OPEN_SOURCE || ext.driver_id == VK_DRIVER_ID_AMD_PROPRIETARY)";
+    assert_eq!(
+        source.matches(anchor).count(),
+        1,
+        "Renderer driver workaround changed; review the PowerVR overlay"
+    );
+    let patched = source.replace(anchor,
+        "if (ext.driver_id == VK_DRIVER_ID_AMD_OPEN_SOURCE || ext.driver_id == VK_DRIVER_ID_AMD_PROPRIETARY || ext.driver_id == VK_DRIVER_ID_IMAGINATION_PROPRIETARY)");
+    let device_overlay =
+        std::path::PathBuf::from(std::env::var_os("OUT_DIR").unwrap()).join("gopher_device.cpp");
+    std::fs::write(&device_overlay, patched).expect("Write PowerVR renderer overlay");
     println!("cargo::rerun-if-changed=parallel-rdp");
     println!("cargo::rerun-if-changed=retroachievements");
     println!("cargo::rerun-if-changed=src/compat");
@@ -36,7 +51,7 @@ fn main() {
         .file("parallel-rdp/parallel-rdp-standalone/vulkan/context.cpp")
         .file("parallel-rdp/parallel-rdp-standalone/vulkan/cookie.cpp")
         .file("parallel-rdp/parallel-rdp-standalone/vulkan/descriptor_set.cpp")
-        .file("parallel-rdp/parallel-rdp-standalone/vulkan/device.cpp")
+        .file(&device_overlay)
         .file("parallel-rdp/parallel-rdp-standalone/vulkan/event_manager.cpp")
         .file("parallel-rdp/parallel-rdp-standalone/vulkan/fence.cpp")
         .file("parallel-rdp/parallel-rdp-standalone/vulkan/fence_manager.cpp")

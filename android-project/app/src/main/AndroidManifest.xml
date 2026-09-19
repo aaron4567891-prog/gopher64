@@ -24,6 +24,7 @@
         <!-- Thor diagnostic: compare against the previous synchronous-shader test. -->
         <meta-data android:name="SDL_ENV.PARALLEL_RDP_FORCE_SYNC_SHADER" android:value="1" />
         <meta-data android:name="SDL_ENV.PARALLEL_RDP_SUBGROUP" android:value="0" />
+        <meta-data android:name="SDL_ENV.PARALLEL_RDP_UBERSHADER" android:value="1" />
         <activity android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:name=".SlintActivity" android:exported="true">
             <meta-data android:name="android.app.lib_name" android:value="gopher64" />
