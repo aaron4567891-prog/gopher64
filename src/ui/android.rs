@@ -14,6 +14,47 @@ const REQUEST_ROM_LIBRARY: jint = 4;
 const CONFIGURE_INPUT_PROFILE: jint = 2;
 const RUN_ROM: jint = 3;
 
+static FRONTEND_PENDING: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+static FRONTEND_READY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+pub fn frontend_ready() {
+    FRONTEND_READY.store(true, std::sync::atomic::Ordering::SeqCst);
+    dispatch_frontend();
+}
+
+pub fn frontend_closed() {
+    FRONTEND_READY.store(false, std::sync::atomic::Ordering::SeqCst);
+    *FRONTEND_PENDING.lock().unwrap() = None;
+}
+
+fn dispatch_frontend() {
+    if !FRONTEND_READY.load(std::sync::atomic::Ordering::SeqCst) {
+        return;
+    }
+    let weak = WEAK_SLINT_WINDOW.lock().unwrap().clone();
+    if let Some(weak) = weak
+        && let Some(path) = FRONTEND_PENDING.lock().unwrap().take()
+    {
+        ui::gui::run_with_path(weak, path.into());
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_io_github_gopher64_gopher64_SlintActivity_nativeQueueFrontendRom<
+    'caller,
+>(
+    mut unowned_env: EnvUnowned<'caller>,
+    _activity: JObject<'caller>,
+    path: JString<'caller>,
+) {
+    let outcome = unowned_env.with_env(|env| -> jni::errors::Result<()> {
+        *FRONTEND_PENDING.lock().unwrap() = Some(path.try_to_string(env)?);
+        dispatch_frontend();
+        Ok(())
+    });
+    outcome.resolve::<jni::errors::ThrowRuntimeExAndDefault>()
+}
+
 pub static ANDROID_APP: std::sync::Mutex<Option<slint::android::AndroidApp>> =
     std::sync::Mutex::new(None);
 
@@ -679,7 +720,9 @@ pub extern "system" fn Java_io_github_gopher64_gopher64_SlintActivity_nativeOnAc
                     {
                         weak_app_window
                             .upgrade_in_event_loop(move |handle| {
-                                ui::gui::update_recent_roms(&handle, file_path.into());
+                                if !file_path.contains("/frontend-roms/") {
+                                    ui::gui::update_recent_roms(&handle, file_path.into());
+                                }
                                 handle.set_game_running(false)
                             })
                             .unwrap();

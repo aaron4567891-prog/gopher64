@@ -22,11 +22,19 @@
         android:appCategory="game"
         android:hardwareAccelerated="true">
         <activity android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
-            android:name=".SlintActivity" android:exported="true">
+            android:name=".SlintActivity" android:exported="true" android:launchMode="singleTask">
             <meta-data android:name="android.app.lib_name" android:value="gopher64" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" android:mimeType="application/octet-stream" />
+                <data android:scheme="file" android:mimeType="application/zip" />
+                <data android:mimeType="application/x-n64-rom" />
+                <data android:mimeType="application/x-7z-compressed" />
             </intent-filter>
         </activity>
         <activity android:name=".RomLibraryActivity" android:exported="false"

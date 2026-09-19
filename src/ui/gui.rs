@@ -67,7 +67,7 @@ pub fn open_uri(path: impl AsRef<std::ffi::OsStr>) {
     }
 }
 
-fn run_with_path(weak: slint::Weak<AppWindow>, path: std::path::PathBuf) {
+pub(crate) fn run_with_path(weak: slint::Weak<AppWindow>, path: std::path::PathBuf) {
     let weak2 = weak.clone();
     weak.upgrade_in_event_loop(move |handle| {
         if handle.get_game_running() {
@@ -577,7 +577,11 @@ pub fn app_window(
         });
     }
 
+    #[cfg(target_os = "android")]
+    ui::android::frontend_ready();
     app.run().unwrap();
+    #[cfg(target_os = "android")]
+    ui::android::frontend_closed();
     retroachievements::shutdown_client();
 }
 
