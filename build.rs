@@ -2,6 +2,24 @@
 mod renderer_mode;
 
 fn main() {
+    // Bindgen must use the compiler and builtin headers matching its libclang.
+    // CC/CXX remain cargo-ndk's Android compilers.
+    if cfg!(windows) {
+        if let Some(library) = std::env::var_os("LIBCLANG_PATH") {
+            let library = std::path::PathBuf::from(library);
+            let directory = if library.is_file() {
+                library.parent().expect("libclang directory").to_path_buf()
+            } else {
+                library
+            };
+            let compiler = directory.join("clang.exe");
+            assert!(
+                compiler.is_file(),
+                "Expected clang.exe beside LIBCLANG_PATH; use a complete LLVM installation"
+            );
+            unsafe { std::env::set_var("CLANG_PATH", compiler) };
+        }
+    }
     // cargo-ndk 4.1 passes clang without .exe; clang-sys requires an actual file.
     // Set this before cc starts any compiler worker threads.
     if cfg!(windows) {
@@ -382,10 +400,10 @@ fn android_bindgen_builder() -> bindgen::Builder {
     let output = std::process::Command::new(clang)
         .arg("-print-resource-dir")
         .output()
-        .expect("Run NDK clang.exe to locate builtin headers");
+        .expect("Run matching clang.exe to locate builtin headers");
     assert!(
         output.status.success(),
-        "NDK clang resource directory lookup failed"
+        "Clang resource directory lookup failed"
     );
     let resource = String::from_utf8(output.stdout).expect("Clang resource path must be UTF-8");
     let resource = resource.trim();
@@ -393,7 +411,7 @@ fn android_bindgen_builder() -> bindgen::Builder {
         std::path::Path::new(resource)
             .join("include/stdbool.h")
             .is_file(),
-        "NDK Clang builtin headers are missing from {resource}"
+        "Clang builtin headers are missing from {resource}"
     );
     builder.clang_arg(format!("-resource-dir={resource}"))
 }
