@@ -3,11 +3,13 @@
 
 import {
     GroupBox,
+    Button,
     ComboBox,
     HorizontalBox,
     VerticalBox,
     Switch,
 } from "std-widgets.slint";
+import { State } from "localgame_page.slint";
 import { Page } from "page.slint";
 
 export global SettingsData {
@@ -30,6 +32,11 @@ export global SettingsData {
 
 export component Settings inherits Page {
     title: @tr("Settings");
+    callback diagnostics_clicked;
+    if State.is_android: Button {
+        text: @tr("Diagnostic logging");
+        clicked => { root.diagnostics_clicked(); }
+    }
 
     HorizontalBox {
         alignment: center;

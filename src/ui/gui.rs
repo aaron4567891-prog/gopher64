@@ -187,6 +187,8 @@ fn input_profiles(config: &ui::config::Config) -> Vec<String> {
 }
 
 fn settings_window(app: &AppWindow, config: &ui::config::Config) {
+    #[cfg(target_os = "android")]
+    app.on_diagnostics_clicked(ui::android::open_diagnostics);
     app.set_integer_scaling(config.video.integer_scaling);
     app.set_ssaa(config.video.ssaa);
     app.set_fullscreen(config.video.fullscreen);

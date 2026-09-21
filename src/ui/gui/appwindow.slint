@@ -51,6 +51,7 @@ export component AppWindow inherits Window {
     callback source_code_button_clicked;
     callback open_rom_button_clicked;
     callback rom_library_button_clicked;
+    callback diagnostics_clicked;
     callback saves_folder_button_clicked;
     callback input_profile_button_clicked;
     callback input_profile_creation_button_clicked;
@@ -360,6 +361,7 @@ export component AppWindow inherits Window {
             }
         }
         if(side-bar.current-item == 5): Settings {
+            diagnostics_clicked => { root.diagnostics_clicked(); }
             width: 100%;
             height: 100%;
         }

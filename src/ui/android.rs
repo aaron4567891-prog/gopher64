@@ -801,3 +801,20 @@ pub extern "system" fn Java_io_github_gopher64_gopher64_SlintActivity_nativeLibr
     });
     outcome.resolve::<jni::errors::ThrowRuntimeExAndDefault>()
 }
+
+pub fn open_diagnostics() {
+    if let Ok(app) = ANDROID_APP.lock()
+        && let Some(app) = app.as_ref()
+        && let Err(err) = get_vm(app).attach_current_thread(|env| {
+            let raw = app.activity_as_ptr() as jni::sys::jobject;
+            let activity = unsafe { env.as_cast_raw::<Global<AndroidActivity>>(&raw)? };
+            let package = JString::from_str(env, "io.github.gopher64.gopher64")?;
+            let class = JString::from_str(env, "io.github.gopher64.gopher64.DiagnosticsActivity")?;
+            let intent = AndroidIntent::new(env)?.set_class_name(env, &package, &class)?;
+            activity.start_activity(env, &intent)?;
+            Ok::<(), jni::errors::Error>(())
+        })
+    {
+        eprintln!("Could not open diagnostic settings: {err:?}");
+    }
+}
