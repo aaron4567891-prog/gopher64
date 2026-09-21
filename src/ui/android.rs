@@ -81,6 +81,7 @@ bind_java_type! {
         AndroidContentResolver => "android.content.ContentResolver",
     },
     methods {
+        fn get_package_name() -> JString,
         fn start_activity(intent: AndroidIntent) -> (),
         fn start_activity_for_result(intent: AndroidIntent, request_code: jint) -> (),
         fn get_content_resolver() -> AndroidContentResolver,
@@ -252,7 +253,7 @@ fn start_configure_input_profile_on_jvm(
     let raw_activity_global = app.activity_as_ptr() as jni::sys::jobject;
     let activity = unsafe { env.as_cast_raw::<Global<AndroidActivity>>(&raw_activity_global)? };
 
-    let package_name = JString::from_str(env, "io.github.gopher64.gopher64")?;
+    let package_name = activity.as_ref().get_package_name(env)?;
     let class_name = JString::from_str(env, "io.github.gopher64.gopher64.N64Activity")?;
 
     let args_key = JString::from_str(env, "args")?;
@@ -308,7 +309,7 @@ fn start_run_rom_on_jvm(
     let raw_activity_global = app.activity_as_ptr() as jni::sys::jobject;
     let activity = unsafe { env.as_cast_raw::<Global<AndroidActivity>>(&raw_activity_global)? };
 
-    let package_name = JString::from_str(env, "io.github.gopher64.gopher64")?;
+    let package_name = activity.as_ref().get_package_name(env)?;
     let class_name = JString::from_str(env, "io.github.gopher64.gopher64.N64Activity")?;
 
     let file_path_key = JString::from_str(env, "file_path")?;
@@ -542,7 +543,7 @@ fn select_rom_on_jvm(
     let activity = unsafe { env.as_cast_raw::<Global<AndroidActivity>>(&raw_activity_global)? };
 
     if library {
-        let package = JString::from_str(env, "io.github.gopher64.gopher64")?;
+        let package = activity.as_ref().get_package_name(env)?;
         let class = JString::from_str(env, "io.github.gopher64.gopher64.RomLibraryActivity")?;
         let intent = AndroidIntent::new(env)?.set_class_name(env, &package, &class)?;
         activity.start_activity_for_result(env, &intent, REQUEST_ROM_LIBRARY)?;
@@ -808,7 +809,7 @@ pub fn open_diagnostics() {
         && let Err(err) = get_vm(app).attach_current_thread(|env| {
             let raw = app.activity_as_ptr() as jni::sys::jobject;
             let activity = unsafe { env.as_cast_raw::<Global<AndroidActivity>>(&raw)? };
-            let package = JString::from_str(env, "io.github.gopher64.gopher64")?;
+            let package = activity.as_ref().get_package_name(env)?;
             let class = JString::from_str(env, "io.github.gopher64.gopher64.DiagnosticsActivity")?;
             let intent = AndroidIntent::new(env)?.set_class_name(env, &package, &class)?;
             activity.start_activity(env, &intent)?;

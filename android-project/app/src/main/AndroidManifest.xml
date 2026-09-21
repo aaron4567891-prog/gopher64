@@ -16,13 +16,13 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <application android:name=".GopherApplication"
+    <application android:name="io.github.gopher64.gopher64.GopherApplication"
         android:icon="@mipmap/ic_launcher"
-        android:label="Gopher64"
+        android:label="Gopher64 Personal"
         android:appCategory="game"
         android:hardwareAccelerated="true">
         <activity android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
-            android:name=".SlintActivity" android:exported="true" android:launchMode="singleTask">
+            android:name="io.github.gopher64.gopher64.SlintActivity" android:exported="true" android:launchMode="singleTask">
             <meta-data android:name="android.app.lib_name" android:value="gopher64" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -37,9 +37,9 @@
                 <data android:mimeType="application/x-7z-compressed" />
             </intent-filter>
         </activity>
-        <activity android:name=".RomLibraryActivity" android:exported="false"
+        <activity android:name="io.github.gopher64.gopher64.RomLibraryActivity" android:exported="false"
             android:theme="@android:style/Theme.Material.NoActionBar" />
-        <activity android:name=".N64Activity"
+        <activity android:name="io.github.gopher64.gopher64.N64Activity"
             android:launchMode="singleTop"
             android:configChanges="layoutDirection|locale|grammaticalGender|fontScale|fontWeightAdjustment|orientation|uiMode|screenLayout|screenSize|smallestScreenSize|keyboard|keyboardHidden|navigation"
             android:preferMinimalPostProcessing="true"
@@ -48,7 +48,7 @@
                 <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
             </intent-filter>
         </activity>
-        <activity android:name=".DiagnosticsActivity" android:exported="false"
+        <activity android:name="io.github.gopher64.gopher64.DiagnosticsActivity" android:exported="false"
             android:theme="@android:style/Theme.Material.NoActionBar" />
         <provider android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.diagnostic-files"
