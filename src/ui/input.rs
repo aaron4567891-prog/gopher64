@@ -5,6 +5,40 @@ use crate::ui;
 const X_AXIS_SHIFT: usize = 16;
 const Y_AXIS_SHIFT: usize = 24;
 
+// Android touch state is a single atomic snapshot: buttons plus both stick axes.
+#[cfg(target_os = "android")]
+static TOUCH_STATE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+
+#[cfg(target_os = "android")]
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_io_github_gopher64_gopher64_N64Activity_nativeTouch(
+    _env: jni::EnvUnowned<'_>,
+    _activity: jni::objects::JObject<'_>,
+    buttons: jni::sys::jint,
+    x: jni::sys::jint,
+    y: jni::sys::jint,
+) {
+    let data = (buttons as u32 & 0x3fff)
+        | ((x.clamp(-85, 85) as i8 as u8 as u32) << X_AXIS_SHIFT)
+        | ((y.clamp(-85, 85) as i8 as u8 as u32) << Y_AXIS_SHIFT);
+    TOUCH_STATE.store(data, std::sync::atomic::Ordering::Relaxed);
+}
+
+fn merge_touch(keys: u32, channel: usize) -> u32 {
+    #[cfg(target_os = "android")]
+    if channel == 0 {
+        let touch = TOUCH_STATE.load(std::sync::atomic::Ordering::Relaxed);
+        let axes = touch & 0xffff0000;
+        return if axes != 0 {
+            (keys & 0x0000ffff) | touch
+        } else {
+            keys | touch
+        };
+    }
+    let _ = channel;
+    keys
+}
+
 const MAX_AXIS_VALUE: f64 = 85.0;
 
 pub const UNKNOWN_CONTROLLER_NAME: &str = "Unknown controller";
@@ -390,7 +424,7 @@ pub fn get(ui: &mut ui::Ui, channel: usize) -> InputData {
     let Some(profile) = ui.config.input.input_profiles.get(profile_name) else {
         eprintln!("Invalid profile name: {profile_name}");
         return InputData {
-            data: 0,
+            data: merge_touch(0, channel),
             pak_change_pressed: false,
         };
     };
@@ -441,7 +475,7 @@ pub fn get(ui: &mut ui::Ui, channel: usize) -> InputData {
             }
         }
         InputData {
-            data: keys,
+            data: merge_touch(keys, channel),
             pak_change_pressed,
         }
     }
