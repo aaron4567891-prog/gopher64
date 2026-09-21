@@ -2,6 +2,19 @@
 mod renderer_mode;
 
 fn main() {
+    // cargo-ndk 4.1 passes clang without .exe; clang-sys requires an actual file.
+    // Set this before cc starts any compiler worker threads.
+    if cfg!(windows) {
+        if let Some(path) = std::env::var_os("CLANG_PATH") {
+            let path = std::path::PathBuf::from(path);
+            if !path.is_file() && path.extension().is_none() {
+                let executable = path.with_extension("exe");
+                if executable.is_file() {
+                    unsafe { std::env::set_var("CLANG_PATH", executable) };
+                }
+            }
+        }
+    }
     println!("cargo::rerun-if-changed=build_support");
     let renderer_source = std::fs::read_to_string(
         "parallel-rdp/parallel-rdp-standalone/parallel-rdp/rdp_renderer.cpp",
@@ -185,7 +198,7 @@ fn main() {
 
     let out_path = std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap());
 
-    let mut retroachievements_builder = bindgen::Builder::default()
+    let mut retroachievements_builder = android_bindgen_builder()
         .header("retroachievements/retroachievements.h")
         .allowlist_function("ra_init_client")
         .allowlist_function("ra_welcome")
@@ -219,7 +232,7 @@ fn main() {
         .write_to_file(out_path.join("retroachievements_bindings.rs"))
         .expect("Couldn't write bindings!");
 
-    let parallel_bindings = bindgen::Builder::default()
+    let parallel_bindings = android_bindgen_builder()
         .header("parallel-rdp/interface.hpp")
         .allowlist_function("rdp_init")
         .allowlist_function("rdp_close")
@@ -245,7 +258,7 @@ fn main() {
         .expect("Couldn't write bindings!");
 
     if arch == "aarch64" {
-        let simd_bindings = bindgen::Builder::default()
+        let simd_bindings = android_bindgen_builder()
             .header("src/compat/sse2neon/sse2neon.h")
             .allowlist_function("_mm_setzero_si128")
             .allowlist_function("_mm_set_epi8")
@@ -358,4 +371,29 @@ fn copy_dir_all(
         }
     }
     Ok(())
+}
+
+fn android_bindgen_builder() -> bindgen::Builder {
+    let builder = bindgen::Builder::default();
+    if !cfg!(windows) || std::env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("android") {
+        return builder;
+    }
+    let clang = std::env::var_os("CLANG_PATH").expect("cargo-ndk must supply CLANG_PATH");
+    let output = std::process::Command::new(clang)
+        .arg("-print-resource-dir")
+        .output()
+        .expect("Run NDK clang.exe to locate builtin headers");
+    assert!(
+        output.status.success(),
+        "NDK clang resource directory lookup failed"
+    );
+    let resource = String::from_utf8(output.stdout).expect("Clang resource path must be UTF-8");
+    let resource = resource.trim();
+    assert!(
+        std::path::Path::new(resource)
+            .join("include/stdbool.h")
+            .is_file(),
+        "NDK Clang builtin headers are missing from {resource}"
+    );
+    builder.clang_arg(format!("-resource-dir={resource}"))
 }
