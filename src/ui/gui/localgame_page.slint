@@ -11,6 +11,8 @@ import { Page } from "page.slint";
 import { AboutData, NewVersionButton } from "about_page.slint";
 
 export global State {
+    in-out property <string> library_status;
+    in-out property <[{ name: string, uri: string, cover: image }]> library_games;
     in-out property <bool> game_running;
     in-out property <bool> is_android;
     in-out property <[{ a: string, b: string }]> recent_roms;
@@ -29,11 +31,11 @@ export component LocalGame inherits Page {
         HorizontalBox {
             alignment: center;
             if State.is_android: Button {
-                text: @tr("ROM Library");
+                text: @tr("ROM Folder");
                 enabled: !State.game_running;
                 clicked => { rom_library_button_clicked(); }
             }
-            Button {
+            if !State.is_android: Button {
                 text: @tr("Open ROM");
                 enabled: !State.game_running;
                 clicked => {
@@ -57,9 +59,32 @@ export component LocalGame inherits Page {
                 newversion_button_clicked();
             }
         }
-        Rectangle { }
+        if State.is_android: Text {
+            text: State.library_status;
+            wrap: word-wrap;
+        }
+        if State.is_android: VerticalLayout {
+            VerticalLayout {
+                spacing: 8px;
+                for game in State.library_games: HorizontalLayout {
+                    height: 120px;
+                    spacing: 12px;
+                    Image {
+                        source: game.cover;
+                        width: 140px;
+                        image-fit: contain;
+                    }
+                    Button {
+                        text: game.name;
+                        enabled: !State.game_running;
+                        clicked => { recent_rom_button_clicked(game.uri); }
+                    }
+                }
+            }
+        }
+        if !State.is_android: Rectangle { }
 
-        if State.recent_roms.length > 0:HorizontalBox {
+        if !State.is_android && State.recent_roms.length > 0:HorizontalBox {
             alignment: center;
             GroupBox {
                 title: @tr("Recent ROMs");

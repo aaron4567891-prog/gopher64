@@ -15,6 +15,8 @@ class SlintActivity : NativeActivity() {
     }
     private external fun nativeOnActivityResult(requestCode: Int, resultCode: Int, data: Intent?)
     private external fun nativeQueueFrontendRom(path: String)
+    private external fun nativeLibraryUpdated(json: String)
+    private val homeLibrary by lazy { HomeRomLibrary(this, ::nativeLibraryUpdated) }
     private val frontendWorker = Executors.newSingleThreadExecutor()
     private var frontendGame = false
     private var preparingFrontendGame = false
@@ -26,6 +28,7 @@ class SlintActivity : NativeActivity() {
         frontendGame = savedInstanceState?.getBoolean("frontendGame") ?: false
         gameRunning = savedInstanceState?.getBoolean("gameRunning") ?: false
         frontendFile = savedInstanceState?.getString("frontendFile")?.let { File(it) }
+        homeLibrary.reload()
         if (savedInstanceState == null) acceptFrontendIntent(intent)
     }
 
@@ -78,6 +81,16 @@ class SlintActivity : NativeActivity() {
     }
 
     override fun startActivityForResult(intent: Intent, requestCode: Int) {
+        if (requestCode == 4) {
+            val picker = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+                getSharedPreferences("rom_library", MODE_PRIVATE).getString("tree", null)?.let {
+                    putExtra(android.provider.DocumentsContract.EXTRA_INITIAL_URI, android.net.Uri.parse(it))
+                }
+            }
+            super.startActivityForResult(picker, requestCode)
+            return
+        }
         if (requestCode == 3) gameRunning = true
         super.startActivityForResult(intent, requestCode)
     }
@@ -85,6 +98,12 @@ class SlintActivity : NativeActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
+        if (requestCode == 4) {
+            // Complete the old picker future without treating a directory as a ROM.
+            nativeOnActivityResult(requestCode, RESULT_CANCELED, null)
+            if (resultCode == RESULT_OK) homeLibrary.accept(data)
+            return
+        }
         nativeOnActivityResult(requestCode, resultCode, data)
         if (requestCode == 3) {
             gameRunning = false
@@ -98,6 +117,7 @@ class SlintActivity : NativeActivity() {
     }
 
     override fun onDestroy() {
+        homeLibrary.close()
         frontendWorker.shutdownNow()
         super.onDestroy()
     }

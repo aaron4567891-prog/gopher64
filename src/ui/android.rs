@@ -20,6 +20,7 @@ static FRONTEND_READY: std::sync::atomic::AtomicBool = std::sync::atomic::Atomic
 pub fn frontend_ready() {
     FRONTEND_READY.store(true, std::sync::atomic::Ordering::SeqCst);
     dispatch_frontend();
+    dispatch_library();
 }
 
 pub fn frontend_closed() {
@@ -737,6 +738,65 @@ pub extern "system" fn Java_io_github_gopher64_gopher64_SlintActivity_nativeOnAc
         {
             let _ = tx.send(None);
         }
+        Ok(())
+    });
+    outcome.resolve::<jni::errors::ThrowRuntimeExAndDefault>()
+}
+
+// Keep the most recent scan until Slint has created its home screen.
+static LIBRARY_JSON: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
+
+#[derive(serde::Deserialize)]
+struct LibraryScan {
+    status: String,
+    games: Vec<LibraryGame>,
+}
+
+#[derive(serde::Deserialize)]
+struct LibraryGame {
+    name: String,
+    uri: String,
+    cover: String,
+}
+
+fn dispatch_library() {
+    let json = LIBRARY_JSON.lock().unwrap().clone();
+    let Ok(scan) = serde_json::from_str::<LibraryScan>(&json) else {
+        return;
+    };
+    let Some(weak) = WEAK_SLINT_WINDOW.lock().unwrap().clone() else {
+        return;
+    };
+    let _ = weak.upgrade_in_event_loop(move |app| {
+        let rows = scan
+            .games
+            .into_iter()
+            .map(|game| {
+                let cover = if game.cover.is_empty() {
+                    slint::Image::default()
+                } else {
+                    slint::Image::load_from_path(std::path::Path::new(&game.cover))
+                        .unwrap_or_default()
+                };
+                (cover, game.name.into(), game.uri.into())
+            })
+            .collect::<Vec<_>>();
+        app.set_library_status(scan.status.into());
+        app.set_library_games(slint::ModelRc::new(slint::VecModel::from(rows)));
+    });
+}
+
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_io_github_gopher64_gopher64_SlintActivity_nativeLibraryUpdated<
+    'caller,
+>(
+    mut unowned_env: EnvUnowned<'caller>,
+    _activity: JObject<'caller>,
+    json: JString<'caller>,
+) {
+    let outcome = unowned_env.with_env(|env| -> jni::errors::Result<()> {
+        *LIBRARY_JSON.lock().unwrap() = json.try_to_string(env)?;
+        dispatch_library();
         Ok(())
     });
     outcome.resolve::<jni::errors::ThrowRuntimeExAndDefault>()
