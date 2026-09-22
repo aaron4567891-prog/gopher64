@@ -36,7 +36,7 @@ pub extern "system" fn Java_io_github_gopher64_gopher64_N64Activity_nativeReques
     unsafe {
         let mut event: sdl3_sys::events::SDL_Event = std::mem::zeroed();
         event.r#type = sdl3_sys::events::SDL_EVENT_QUIT.0;
-        sdl3_sys::events::SDL_PushEvent(&event);
+        sdl3_sys::events::SDL_PushEvent(&mut event);
     }
 }
 
