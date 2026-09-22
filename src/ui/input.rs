@@ -24,6 +24,22 @@ pub extern "system" fn Java_io_github_gopher64_gopher64_N64Activity_nativeTouch(
     TOUCH_STATE.store(data, std::sync::atomic::Ordering::Relaxed);
 }
 
+/// Ask the SDL/native emulation loop to exit without destroying the Android
+/// activity or its SurfaceView first. The normal run_game cleanup path then
+/// closes input, audio and parallel-rdp/Vulkan in the correct order.
+#[cfg(target_os = "android")]
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_io_github_gopher64_gopher64_N64Activity_nativeRequestExit(
+    _env: jni::EnvUnowned<'_>,
+    _activity: jni::objects::JObject<'_>,
+) {
+    unsafe {
+        let mut event: sdl3_sys::events::SDL_Event = std::mem::zeroed();
+        event.r#type = sdl3_sys::events::SDL_EVENT_QUIT.0;
+        sdl3_sys::events::SDL_PushEvent(&event);
+    }
+}
+
 fn merge_touch(keys: u32, channel: usize) -> u32 {
     #[cfg(target_os = "android")]
     if channel == 0 {

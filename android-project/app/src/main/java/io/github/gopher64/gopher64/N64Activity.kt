@@ -4,14 +4,36 @@ import android.content.Intent
 import android.os.PowerManager
 import android.content.Context
 import android.os.Bundle
+import android.os.Build
+import android.window.OnBackInvokedCallback
+import android.window.OnBackInvokedDispatcher
 import android.util.Log
 import org.libsdl.app.SDLActivity
 
 class N64Activity : SDLActivity() {
     private var touchControls: N64TouchControls? = null
     private external fun nativeTouch(buttons: Int, x: Int, y: Int)
+    private external fun nativeRequestExit()
+
+    private var exitRequested = false
+    private var backCallback: OnBackInvokedCallback? = null
+
+    private fun requestCleanExit() {
+        if (exitRequested) return
+        exitRequested = true
+        releaseTouch()
+        // Do not finish the Activity here. Let the native SDL thread process the
+        // quit event, tear down parallel-rdp/Vulkan and audio, and return from
+        // gopher64_sdl_main. SDLActivity will then finish normally.
+        nativeRequestExit()
+    }
 
     private fun releaseTouch() { touchControls?.release() }
+
+    @Suppress("DEPRECATION")
+    override fun onBackPressed() {
+        requestCleanExit()
+    }
 
     override fun onPause() {
         releaseTouch()
@@ -25,6 +47,18 @@ class N64Activity : SDLActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Android 13+ predictive-back can bypass onBackPressed(). Register an
+        // explicit callback so a back swipe requests native shutdown before the
+        // SurfaceView is destroyed. PRIORITY_OVERLAY keeps SDLActivity's own
+        // callback from finishing the Activity first.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            backCallback = OnBackInvokedCallback { requestCleanExit() }
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_OVERLAY,
+                backCallback!!
+            )
+        }
 
         val prefs = getSharedPreferences("touch_controls", MODE_PRIVATE)
         val overlay = android.widget.FrameLayout(this)
@@ -63,6 +97,17 @@ class N64Activity : SDLActivity() {
         } else {
             Log.v("SDL", "Sustained performance mode not supported")
         }
+    }
+
+    override fun onDestroy() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            backCallback?.let {
+                onBackInvokedDispatcher.unregisterOnBackInvokedCallback(it)
+            }
+            backCallback = null
+        }
+        releaseTouch()
+        super.onDestroy()
     }
 
     override fun getLibraries(): Array<String> = arrayOf(
