@@ -67,6 +67,8 @@ enum user_event_codes {
   USER_EVENT_EXIT_GAME = 3,
   USER_EVENT_FAST_FORWARD = 4,
   USER_EVENT_LOAD_REWIND = 5,
+  USER_EVENT_PAUSE = 6,
+  USER_EVENT_RESUME = 7,
 };
 
 typedef struct {
@@ -293,15 +295,24 @@ bool sdl_event_filter(void *userdata, SDL_Event *event) {
   } else if (event->type == SDL_EVENT_USER) {
     switch (event->user.code) {
     case USER_EVENT_SAVE_STATE:
+      callback.paused = false;
       callback.save_state = true;
       break;
     case USER_EVENT_LOAD_REWIND:
       callback.load_rewind = true;
       break;
     case USER_EVENT_LOAD_STATE:
+      callback.paused = false;
       callback.load_state = true;
       break;
+    case USER_EVENT_PAUSE:
+      callback.paused = true;
+      break;
+    case USER_EVENT_RESUME:
+      callback.paused = false;
+      break;
     case USER_EVENT_EXIT_GAME:
+      callback.paused = false;
       callback.emu_running = false;
       break;
     case USER_EVENT_FAST_FORWARD:

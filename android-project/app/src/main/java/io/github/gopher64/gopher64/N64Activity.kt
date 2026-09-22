@@ -11,6 +11,59 @@ import android.util.Log
 import org.libsdl.app.SDLActivity
 
 class N64Activity : SDLActivity() {
+    private var menuButton: android.view.View? = null
+    private var menuDialog: android.app.AlertDialog? = null
+    private external fun nativeMenuAction(action: Int)
+
+    private fun showGameMenu() {
+        if (exitRequested || isFinishing || menuDialog?.isShowing == true) return
+        releaseTouch()
+        val prefs = getSharedPreferences("touch_controls", MODE_PRIVATE)
+        menuDialog = android.app.AlertDialog.Builder(this)
+            .setTitle("Game menu")
+            .setItems(arrayOf("Resume", "Pause", "Save State", "Load State", "Touch Controls",
+                if (prefs.getBoolean("show_menu", true)) "Hide Menu button" else "Show Menu button",
+                "Exit Game")) { _, which ->
+                when (which) {
+                    0 -> nativeMenuAction(7)
+                    1 -> nativeMenuAction(6)
+                    2 -> nativeMenuAction(1)
+                    3 -> android.app.AlertDialog.Builder(this)
+                        .setTitle("Load State?")
+                        .setMessage("Replace current progress with the saved state?")
+                        .setPositiveButton("Load") { _, _ -> nativeMenuAction(2) }
+                        .setNegativeButton("Cancel", null).show()
+                    4 -> showTouchSettings()
+                    5 -> {
+                        val show = !prefs.getBoolean("show_menu", true)
+                        prefs.edit().putBoolean("show_menu", show).apply()
+                        menuButton?.visibility = if (show) android.view.View.VISIBLE else android.view.View.GONE
+                        if (!show) android.widget.Toast.makeText(this,
+                            "Use Android Back to reopen the game menu.", android.widget.Toast.LENGTH_LONG).show()
+                    }
+                    6 -> android.app.AlertDialog.Builder(this)
+                        .setTitle("Exit game?")
+                        .setPositiveButton("Exit") { _, _ -> requestCleanExit() }
+                        .setNegativeButton("Cancel", null).show()
+                }
+            }.setNegativeButton("Close", null).create()
+        menuDialog?.show()
+    }
+
+    private fun showTouchSettings() {
+        val prefs = getSharedPreferences("touch_controls", MODE_PRIVATE)
+        releaseTouch()
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Touch controls")
+            .setMultiChoiceItems(arrayOf("Show touch controls"),
+                booleanArrayOf(prefs.getBoolean("enabled", true))) { _, _, enabled ->
+                releaseTouch()
+                prefs.edit().putBoolean("enabled", enabled).apply()
+                touchControls?.visibility = if (enabled)
+                    android.view.View.VISIBLE else android.view.View.GONE
+            }.setPositiveButton("Done", null).show()
+    }
+
     private var touchControls: N64TouchControls? = null
     private external fun nativeTouch(buttons: Int, x: Int, y: Int)
     private external fun nativeRequestExit()
@@ -32,7 +85,7 @@ class N64Activity : SDLActivity() {
 
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
-        requestCleanExit()
+        showGameMenu()
     }
 
     override fun onPause() {
@@ -49,11 +102,11 @@ class N64Activity : SDLActivity() {
         super.onCreate(savedInstanceState)
 
         // Android 13+ predictive-back can bypass onBackPressed(). Register an
-        // explicit callback so a back swipe requests native shutdown before the
-        // SurfaceView is destroyed. PRIORITY_OVERLAY keeps SDLActivity's own
+        // explicit callback so Back opens the menu without destroying the
+        // SurfaceView. PRIORITY_OVERLAY keeps SDLActivity's own
         // callback from finishing the Activity first.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            backCallback = OnBackInvokedCallback { requestCleanExit() }
+            backCallback = OnBackInvokedCallback { showGameMenu() }
             onBackInvokedDispatcher.registerOnBackInvokedCallback(
                 OnBackInvokedDispatcher.PRIORITY_OVERLAY,
                 backCallback!!
@@ -69,22 +122,14 @@ class N64Activity : SDLActivity() {
         touchControls?.visibility = if (prefs.getBoolean("enabled", true))
             android.view.View.VISIBLE else android.view.View.GONE
         val toggle = android.widget.Button(this).apply {
-            text = "Controls"
+            text = "Menu"
             alpha = 0.65f
             isFocusable = false
-            setOnClickListener {
-                releaseTouch()
-                android.app.AlertDialog.Builder(this@N64Activity)
-                    .setTitle("Touch controls")
-                    .setMultiChoiceItems(arrayOf("Show touch controls"),
-                        booleanArrayOf(prefs.getBoolean("enabled", true))) { _, _, enabled ->
-                        releaseTouch()
-                        prefs.edit().putBoolean("enabled", enabled).apply()
-                        touchControls?.visibility = if (enabled)
-                            android.view.View.VISIBLE else android.view.View.GONE
-                    }.setPositiveButton("Done", null).show()
-            }
+            visibility = if (prefs.getBoolean("show_menu", true))
+                android.view.View.VISIBLE else android.view.View.GONE
+            setOnClickListener { showGameMenu() }
         }
+        menuButton = toggle
         overlay.addView(toggle, android.widget.FrameLayout.LayoutParams(-2, -2,
             android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL))
         addContentView(overlay, android.view.ViewGroup.LayoutParams(-1, -1))
@@ -106,6 +151,7 @@ class N64Activity : SDLActivity() {
             }
             backCallback = null
         }
+        menuDialog?.dismiss()
         releaseTouch()
         super.onDestroy()
     }

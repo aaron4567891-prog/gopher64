@@ -40,6 +40,37 @@ pub extern "system" fn Java_io_github_gopher64_gopher64_N64Activity_nativeReques
     }
 }
 
+// UI thread posts commands; the emulator thread dispatches SDL events.
+#[cfg(target_os = "android")]
+static MENU_ACTIONS: std::sync::Mutex<std::collections::VecDeque<i32>> =
+    std::sync::Mutex::new(std::collections::VecDeque::new());
+
+#[cfg(target_os = "android")]
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_io_github_gopher64_gopher64_N64Activity_nativeMenuAction(
+    _env: jni::EnvUnowned<'_>,
+    _activity: jni::objects::JObject<'_>,
+    action: jni::sys::jint,
+) {
+    if matches!(action, 1 | 2 | 3 | 6 | 7) {
+        let mut queue = MENU_ACTIONS.lock().unwrap();
+        if queue.len() < 16 {
+            queue.push_back(action);
+        }
+    }
+}
+
+#[cfg(target_os = "android")]
+fn dispatch_menu_actions() {
+    let commands: Vec<_> = MENU_ACTIONS.lock().unwrap().drain(..).collect();
+    for action in commands {
+        let mut event: sdl3_sys::events::SDL_Event = Default::default();
+        event.user.r#type = u32::from(sdl3_sys::events::SDL_EVENT_USER);
+        event.user.code = action;
+        unsafe { sdl3_sys::events::SDL_PushEvent(&mut event) };
+    }
+}
+
 fn merge_touch(keys: u32, channel: usize) -> u32 {
     #[cfg(target_os = "android")]
     if channel == 0 {
@@ -434,6 +465,8 @@ fn handle_hotkeys(keys: u32, last_key_state: u32) {
 }
 
 pub fn get(ui: &mut ui::Ui, channel: usize) -> InputData {
+    #[cfg(target_os = "android")]
+    dispatch_menu_actions();
     handle_joystick_events(ui);
 
     let profile_name = &ui.config.input.input_profile_binding[channel];
@@ -546,6 +579,8 @@ pub fn get_joysticks() -> Vec<sdl3_sys::joystick::SDL_JoystickID> {
 }
 
 pub fn init(ui: &mut ui::Ui) {
+    #[cfg(target_os = "android")]
+    MENU_ACTIONS.lock().unwrap().clear();
     ui::sdl_init(sdl3_sys::init::SDL_INIT_GAMEPAD);
 
     ui.input.keyboard_state =
